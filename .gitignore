@@ -7,6 +7,9 @@ android/.gradle/
 android/local.properties
 android/**/build/
 *.jks
+*.keystore
+*.p12
+keystore.properties
 
 .env
 .env.local

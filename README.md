@@ -57,7 +57,9 @@ La tabla usa RLS para lectura y una función autenticada para guardar solo datos
 
 ## Android APK
 
-El proyecto nativo está en `android/` y usa Capacitor. Requiere Java 21 y SDK Android 36. Con Android Studio abre `android/` tras sincronizar:
+El proyecto nativo está en `android/` y usa Capacitor. Requiere Java 21 y SDK Android 36. La versión **1.5 (código 6)** ya se compiló como release sin firma; falta configurar la contraseña privada y firmar con la clave del propietario. La APK de producción aún no está publicada. Sigue la [guía de firma, respaldo y distribución Android](docs/android-release.md) para terminar ese paso o preparar futuras actualizaciones con la misma clave.
+
+Para una APK de prueba, con Android Studio abre `android/` tras sincronizar:
 
 ```sh
 npm run android:sync
@@ -65,7 +67,7 @@ cd android
 ./gradlew assembleDebug
 ```
 
-APK de prueba: `android/app/build/outputs/apk/debug/app-debug.apk`. Se puede instalar en tu dispositivo; una distribución de producción necesita una compilación release firmada con tu propia clave, que no se incluye en este repositorio. Los archivos web y la configuración pública de Supabase van dentro de la APK. Android no necesita que tu servidor web esté encendido.
+APK de prueba: `android/app/build/outputs/apk/debug/app-debug.apk`. La distribución de producción usa `scripts/build-android-release.sh` y una clave privada externa al repositorio; el workflow manual `Build signed Android release` es opcional. Antes de sustituir una instalación de prueba con otra firma, sincroniza o exporta sus datos, porque Android exigirá desinstalarla. Los archivos web y la configuración pública de Supabase van dentro de la APK. Android no necesita que tu servidor web esté encendido.
 
 ## Alcance de esta versión
 

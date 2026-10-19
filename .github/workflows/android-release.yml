@@ -1,0 +1,75 @@
+name: Build signed Android release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0'
+      - run: npm ci
+      - name: Build and inspect unsigned release
+        run: bash scripts/build-android-release.sh --unsigned-only
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      - name: Sign and verify release
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/mi-balance-release.p12"
+          trap 'rm -f -- "$ANDROID_KEYSTORE_PATH"' EXIT
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+          encoded = os.environ.get('ANDROID_KEYSTORE_BASE64', '').strip()
+          if not encoded:
+              raise SystemExit('Configure the ANDROID_KEYSTORE_BASE64 repository secret first.')
+          try:
+              data = base64.b64decode(''.join(encoded.split()), validate=True)
+          except (ValueError, TypeError):
+              raise SystemExit('ANDROID_KEYSTORE_BASE64 must contain a valid base64-encoded keystore.')
+          if not data:
+              raise SystemExit('The decoded signing keystore is empty.')
+          target = Path(os.environ['ANDROID_KEYSTORE_PATH'])
+          with target.open('xb') as keystore:
+              keystore.write(data)
+          target.chmod(0o600)
+          PY
+          unset ANDROID_KEYSTORE_BASE64
+          bash scripts/build-android-release.sh --sign-only
+      - name: Upload verified release and public signing metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: mi-balance-signed-release
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            android/app/build/outputs/apk/release/mi-balance-release.apk
+            android/app/build/outputs/apk/release/mi-balance-release.sha256
+            android/app/build/outputs/apk/release/mi-balance-release.certificate.pem
+            android/app/build/outputs/apk/release/mi-balance-release.verification.txt
