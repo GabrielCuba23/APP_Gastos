@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mi Balance</string>
+    <string name="title_activity_main">Mi Balance</string>
+    <string name="package_name">com.gabrielcuba.mibalance</string>
+    <string name="custom_url_scheme">com.gabrielcuba.mibalance</string>
+</resources>

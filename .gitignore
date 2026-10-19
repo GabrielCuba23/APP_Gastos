@@ -1,0 +1,11 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+android/.gradle/
+android/local.properties
+android/**/build/
+*.jks
+
+.env
+.env.local
