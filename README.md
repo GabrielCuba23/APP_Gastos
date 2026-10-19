@@ -4,6 +4,7 @@ App en español para finanzas personales y de negocio, web y Android. Moneda ini
 
 ## Descargas y acceso
 
+- [Ver el tutorial para clientes](https://gabrielcuba23.github.io/APP_Gastos/tutorial/) · [Descargar video MP4](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/tutorial-cliente.mp4). Incluye narración en español, subtítulos y ejemplos ficticios de ingresos, gastos, negocio, ahorros y uso móvil.
 - [Descargar APK Android de prueba](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance-debug.apk).
 - [Descargar web en ZIP](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance-web.zip): extrae el ZIP y abre `mi-balance.html`.
 - [Descargar versión web en un solo HTML](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance.html). Guarda el archivo y ábrelo con Chrome, Edge o Firefox. Funciona sin servidor, en modo local. Usa el mismo archivo y navegador para conservar sus datos; conserva respaldos.

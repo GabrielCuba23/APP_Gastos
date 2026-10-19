@@ -1,0 +1,110 @@
+[
+  {
+    "key": "intro",
+    "title": "Mi Balance",
+    "benefit": "Tu dinero, más claro",
+    "narration": "Bienvenido a Mi Balance. Organiza tus ingresos, gastos, suscripciones, negocio y ahorros en un solo lugar. En este tutorial verás cómo usar la plataforma como cliente, con datos ficticios de demostración.",
+    "audio": "/workspace/tutorial-mi-balance/intro.wav",
+    "speechDuration": 14.980997732426303,
+    "duration": 16.981
+  },
+  {
+    "key": "login",
+    "title": "01 · Ingresa y protege tu cuenta",
+    "benefit": "Tu información, en tu espacio personal",
+    "narration": "Abre la plataforma e ingresa con el correo y la contraseña temporal que te entregó tu proveedor. En el primer acceso, crea una contraseña propia de al menos diez caracteres. Escríbela dos veces y pulsa Actualizar contraseña. Después podrás acceder a tus finanzas.",
+    "audio": "/workspace/tutorial-mi-balance/login.wav",
+    "speechDuration": 18.366349206349206,
+    "duration": 20.366
+  },
+  {
+    "key": "summary",
+    "title": "02 · Conoce tu resumen mensual",
+    "benefit": "Una mirada clara a tu mes",
+    "narration": "En Resumen encontrarás ingresos, gastos, ahorros y el disponible del mes. Puedes cambiar el período con las flechas o el selector. El disponible es lo que queda de tus ingresos después de descontar gastos y aportes de ahorro.",
+    "audio": "/workspace/tutorial-mi-balance/summary.wav",
+    "speechDuration": 15.50095238095238,
+    "duration": 17.501
+  },
+  {
+    "key": "income",
+    "title": "03 · Registra tus ingresos",
+    "benefit": "Identifica cuánto dinero entra",
+    "narration": "Pulsa Nuevo movimiento y elige Ingreso personal. Escribe una descripción, el importe y la fecha. Por ejemplo, Sueldo, dos mil quinientos soles. Guarda y espera la confirmación. Así tendrás un registro claro de tus entradas de dinero.",
+    "audio": "/workspace/tutorial-mi-balance/income.wav",
+    "speechDuration": 17.53451247165533,
+    "duration": 19.535
+  },
+  {
+    "key": "expense",
+    "title": "04 · Registra tus gastos",
+    "benefit": "Reconoce en qué usas tu dinero",
+    "narration": "Ahora registra una salida: elige Gasto personal, escribe Supermercado e ingresa ciento veinte soles. Una descripción clara facilita encontrar y revisar cada gasto. El resumen se actualiza con el movimiento guardado.",
+    "audio": "/workspace/tutorial-mi-balance/expense.wav",
+    "speechDuration": 15.835102040816327,
+    "duration": 17.835
+  },
+  {
+    "key": "subscriptions",
+    "title": "05 · Revisa tus suscripciones",
+    "benefit": "Reúne tus pagos recurrentes",
+    "narration": "En Suscripciones puedes registrar pagos de música, entretenimiento u otros servicios. Añadimos veinte soles por Música. Registra cada mensualidad cuando la pagues. La plataforma no genera cargos automáticos: te ayuda a llevar el control de los pagos realizados.",
+    "audio": "/workspace/tutorial-mi-balance/subscriptions.wav",
+    "speechDuration": 19.105532879818593,
+    "duration": 21.106
+  },
+  {
+    "key": "business",
+    "title": "06 · Organiza tu negocio",
+    "benefit": "Distingue ventas y proveedores",
+    "narration": "En Mi negocio registra las ventas como Ingreso de negocio y las compras de mercadería como Pago a proveedor. Aquí añadimos seiscientos soles en ventas y trescientos en proveedores. El resultado del negocio es de trescientos soles, separado de tus gastos personales.",
+    "audio": "/workspace/tutorial-mi-balance/business.wav",
+    "speechDuration": 18.030249433106576,
+    "duration": 20.03
+  },
+  {
+    "key": "savings",
+    "title": "07 · Da seguimiento a tus ahorros",
+    "benefit": "Haz visibles tus aportes",
+    "narration": "En Ahorros registra el dinero que apartas. En este ejemplo añadimos doscientos soles para un Fondo de emergencia. Verás los aportes del mes. La aplicación registra tus movimientos; no transfiere dinero ni se conecta a tus cuentas bancarias.",
+    "audio": "/workspace/tutorial-mi-balance/savings.wav",
+    "speechDuration": 16.90018140589569,
+    "duration": 18.9
+  },
+  {
+    "key": "organize",
+    "title": "08 · Busca, filtra y corrige",
+    "benefit": "Encuentra tus movimientos con facilidad",
+    "narration": "En Movimientos, busca por descripción y filtra por tipo. Si necesitas corregir un dato, pulsa el lápiz, edita el registro y guarda. Cambiaremos Supermercado a ciento treinta soles. El resumen reflejará el nuevo importe.",
+    "audio": "/workspace/tutorial-mi-balance/organize.wav",
+    "speechDuration": 16.383628117913833,
+    "duration": 18.384
+  },
+  {
+    "key": "backup",
+    "title": "09 · Guarda un respaldo",
+    "benefit": "Conserva una copia de tu información",
+    "narration": "Con Exportar puedes descargar un respaldo de tus movimientos en un archivo. Guárdalo en un lugar privado, porque contiene información financiera. Importar permite recuperar ese respaldo, pero reemplaza los datos actuales después de pedirte confirmación.",
+    "audio": "/workspace/tutorial-mi-balance/backup.wav",
+    "speechDuration": 18.072108843537414,
+    "duration": 20.072
+  },
+  {
+    "key": "devices",
+    "title": "10 · Usa la misma cuenta",
+    "benefit": "Continúa en web o Android",
+    "narration": "Puedes ingresar con la misma cuenta en la página web y en la aplicación Android. Aquí mostramos la vista móvil de la web. Para guardar y sincronizar necesitas conexión. Espera la confirmación y revisa el estado Sincronizado antes de cambiar de dispositivo.",
+    "audio": "/workspace/tutorial-mi-balance/devices.wav",
+    "speechDuration": 17.703401360544216,
+    "duration": 19.703
+  },
+  {
+    "key": "outro",
+    "title": "Tu mes, con más claridad",
+    "benefit": "Registra · Revisa · Decide",
+    "narration": "En nuestro ejemplo hay tres mil cien soles de ingresos, cuatrocientos cincuenta de gastos y doscientos de ahorro. El disponible es de dos mil cuatrocientos cincuenta soles. Registra tus movimientos con constancia y toma decisiones con una visión más clara de tu dinero.",
+    "audio": "/workspace/tutorial-mi-balance/outro.wav",
+    "speechDuration": 18.208979591836734,
+    "duration": 20.209
+  }
+]
