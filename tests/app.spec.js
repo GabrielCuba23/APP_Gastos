@@ -41,13 +41,11 @@ test("mobile layout and invalid backup are handled", async ({ page }) => {
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "invalid.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"entries":[]}'),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"entries":[]}'),
+  });
   await expect(page.getByRole("alert")).toContainText(
     "Archivo de respaldo inválido",
   );
@@ -56,4 +54,41 @@ test("mobile layout and invalid backup are handled", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Mi negocio", exact: true }),
   ).toBeVisible();
+});
+
+test("account form uses the configured project and public API key", async ({
+  page,
+}) => {
+  const { readFile } = await import("node:fs/promises");
+  const config = JSON.parse(await readFile("src/cloud-config.json", "utf8"));
+  let observed = false;
+  await page.route(
+    config.url + "/auth/v1/token?grant_type=password",
+    async (route) => {
+      const request = route.request();
+      expect(request.method()).toBe("POST");
+      expect(request.headers().apikey).toBe(config.publishableKey);
+      expect(request.postDataJSON().email).toBe("conexion@example.com");
+      observed = true;
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "invalid_grant",
+          error_description: "Credenciales de prueba rechazadas",
+        }),
+      });
+    },
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "Ingresar / Crear cuenta" }).click();
+  await page.getByLabel("Correo electrónico").fill("conexion@example.com");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("Test-only-password");
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("status")).toContainText(
+    "Credenciales de prueba rechazadas",
+  );
+  expect(observed).toBe(true);
 });

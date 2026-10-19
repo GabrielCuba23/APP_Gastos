@@ -1,10 +1,12 @@
--- Ejecutar una vez en el editor SQL de tu proyecto Supabase.
+-- Ejecutar en el editor SQL de tu proyecto Supabase. Puede repetirse sin borrar registros.
+begin;
 create table if not exists public.balances (
  user_id uuid primary key references auth.users(id) on delete cascade,
  data jsonb not null default '{"version":1,"currency":"PEN","entries":[]}'::jsonb,
  revision bigint not null default 0
 );
 alter table public.balances enable row level security;
+drop policy if exists "Read own balance" on public.balances;
 create policy "Read own balance" on public.balances for select to authenticated using ((select auth.uid()) = user_id);
 -- Las escrituras solo se permiten mediante la función, con control de versión.
 revoke all on public.balances from anon, authenticated;
@@ -23,6 +25,9 @@ revoke all on function public.save_balance(jsonb,bigint) from public;
 grant execute on function public.save_balance(jsonb,bigint) to authenticated;
 create or replace function public.create_balance() returns trigger language plpgsql security definer set search_path = '' as $$
 begin insert into public.balances(user_id) values(new.id); return new; end; $$;
+drop trigger if exists on_account_created on auth.users;
 create trigger on_account_created after insert on auth.users for each row execute procedure public.create_balance();
 -- Inicializa también las cuentas que ya existen.
 insert into public.balances(user_id) select id from auth.users on conflict do nothing;
+
+commit;
