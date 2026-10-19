@@ -1,0 +1,5 @@
+project_id = "ofxcqqmshgzszwwasdhs"
+
+[functions.manage-accounts]
+# La función valida cada JWT de usuario con auth.getUser; la clave publicable no es un JWT.
+verify_jwt = false

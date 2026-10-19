@@ -1,5 +1,10 @@
 -- Ejecutar en el editor SQL de tu proyecto Supabase. Puede repetirse sin borrar registros.
 begin;
+do $$ begin
+ if to_regclass('public.account_profiles') is not null then
+  raise exception 'Las cuentas de reventa ya están instaladas. Usa la migración de reventas, no schema.sql.';
+ end if;
+end $$;
 create table if not exists public.balances (
  user_id uuid primary key references auth.users(id) on delete cascade,
  data jsonb not null default '{"version":1,"currency":"PEN","entries":[]}'::jsonb,

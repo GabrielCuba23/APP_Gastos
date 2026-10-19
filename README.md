@@ -34,6 +34,14 @@ npm run android:sync
 
 `scripts/install-cloud.sh` reproduce las dependencias y herramientas en `/workspace`, mantiene la verificación TLS y contrasta las descargas de JDK/SDK con los checksums oficiales. No se requieren worktrees; usa el checkout existente. Los procesos deben iniciarse de nuevo al restaurar una tarea.
 
+## Panel de reventas
+
+La ampliación incluye administrador, revendedores y clientes; alta con correo/teléfono/contraseña temporal, planes con vencimiento, renovaciones manuales, suspensión y cambio obligatorio de la contraseña temporal. Los movimientos de cada cliente permanecen privados.
+
+**Activación necesaria:** sigue [supabase/README.md](supabase/README.md). Se requiere ejecutar la migración de cuentas, asignar el administrador con tu correo y desplegar `manage-accounts` como Edge Function. Subir el frontend no despliega ese servicio ni asigna roles. Mientras no se aplique la migración, las cuentas de la versión anterior siguen usando sus movimientos y el panel permanece oculto.
+
+`npm test` incluye pruebas de permisos usando PostgreSQL (PGlite) y del manejador HTTP de la función. `npm run test:e2e` prueba panel, cuentas, contraseña temporal y movimientos con respuestas de servidor simuladas. Las pruebas locales no sustituyen una venta completa en el proyecto real. `npm run build:edge` genera el archivo único para desplegar desde el editor de Supabase.
+
 ## Cuenta y sincronización (Supabase)
 
 Sin iniciar sesión la app funciona localmente en el navegador o WebView Android. Los datos locales no se sincronizan. Exporta un respaldo antes de entrar en una cuenta: al iniciar sesión se cargan los datos de esa cuenta. Puedes importar el respaldo después de iniciar sesión para trasladarlos.
@@ -44,7 +52,7 @@ Sin iniciar sesión la app funciona localmente en el navegador o WebView Android
 4. Ejecuta de nuevo `npm run build` (o reinicia el servidor de desarrollo). Usa las mismas variables al compilar la APK.
 5. Crea una cuenta, confirma el correo e inicia sesión. Registra un movimiento. Inicia sesión desde otro navegador/dispositivo y verifica el movimiento; los cambios se consultan cada 15 segundos. Comprueba que otra cuenta no pueda acceder a esos datos.
 
-La tabla usa RLS para lectura y una función autenticada para guardar solo datos del usuario. La revisión evita sobrescribir cambios de otro dispositivo; si se detecta conflicto, conserva tu formulario, espera una actualización y vuelve a guardar. Guardar con sesión requiere conectividad y confirmación del servidor: los cambios fallidos no se presentan como guardados. La interfaz fue comprobada con respuestas simuladas. No se ha validado aún autenticación ni sincronización real: el entorno cloud bloquea las conexiones a Supabase hasta aplicar la política de red guardada, y el esquema debe ejecutarse en el proyecto.
+La tabla usa RLS para lectura y una función autenticada para guardar solo datos del usuario. La revisión evita sobrescribir cambios de otro dispositivo; si se detecta conflicto, conserva tu formulario, espera una actualización y vuelve a guardar. Guardar con sesión requiere conectividad y confirmación del servidor: los cambios fallidos no se presentan como guardados. La interfaz fue comprobada con respuestas simuladas. El usuario confirmó en el proyecto real el inicio de sesión y la conservación de movimientos. El panel de reventas y su servicio aún requieren la nueva activación y prueba real; el entorno cloud sigue bloqueando las conexiones a Supabase hasta aplicar la política de red guardada.
 
 ## Android APK
 

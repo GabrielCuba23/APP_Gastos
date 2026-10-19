@@ -20,12 +20,16 @@ import {
   ChevronRight,
   CircleCheck,
   Menu,
+  UsersRound,
 } from "lucide-react";
 import { types, incoming, summary, parseBackup, validEntry } from "./finance";
 import "./style.css";
 import Account from "./Account";
 import { Capacitor } from "@capacitor/core";
-import { cloud, readCloud, writeCloud } from "./cloud";
+import { cloud, readCloud, writeCloud, readAccountProfile } from "./cloud";
+import { canManage } from "../supabase/functions/manage-accounts/policy.js";
+import ResellerPanel from "./ResellerPanel";
+import AccessGate from "./AccessGate";
 const KEY = "mi-balance-v1";
 const today = () => {
   const d = new Date();
@@ -64,6 +68,8 @@ function App() {
     [user, setUser] = useState(null),
     [cloudReady, setCloudReady] = useState(false),
     [busy, setBusy] = useState(false);
+  const [accountProfile, setAccountProfile] = useState(null);
+  const [accountAccess, setAccountAccess] = useState(null);
   const revision = useRef(0);
   const activeUser = useRef(null);
   const writeLock = useRef(false);
@@ -72,6 +78,16 @@ function App() {
   async function refreshCloud() {
     const expected = activeUser.current;
     try {
+      const access = await readAccountProfile();
+      if (activeUser.current !== expected) return;
+      setAccountProfile(access.profile);
+      setAccountAccess(access.allowed);
+      if (!access.allowed) {
+        setCloudReady(false);
+        setData({ version: 1, currency: "PEN", entries: [] });
+        setError("");
+        return;
+      }
       const row = await readCloud();
       if (activeUser.current !== expected || row.revision < revision.current)
         return;
@@ -96,6 +112,9 @@ function App() {
       activeUser.current = next?.id || null;
       revision.current = 0;
       setUser(next);
+      setAccountProfile(null);
+      setAccountAccess(null);
+      setPage("Resumen");
       setForm(null);
       setData({ version: 1, currency: "PEN", entries: [] });
       setCloudReady(false);
@@ -191,6 +210,7 @@ function App() {
     ["Mi negocio", Store],
     ["Ahorros", PiggyBank],
   ];
+  if (canManage(accountProfile)) nav.push(["Panel de reventas", UsersRound]);
   function open(type = "expense") {
     setForm({ type, name: "", amount: "", date: today() });
   }
@@ -396,373 +416,397 @@ function App() {
           </div>
         </header>
         <div className="content">
-          <div className="heading">
-            <div>
-              <div className="eyebrow">UN POCO DE ORDEN, MÁS TRANQUILIDAD</div>
-              <h1>{page === "Resumen" ? "Tu mes, en equilibrio." : page}</h1>
-              <p>
-                {page === "Resumen"
-                  ? "Una mirada clara a tu dinero personal y de negocio."
-                  : page === "Suscripciones"
-                    ? "Registra tus pagos recurrentes y revisa cuánto suman cada mes."
-                    : page === "Mi negocio"
-                      ? "Tus ventas y pagos a proveedores, en un solo lugar."
-                      : page === "Ahorros"
-                        ? "Cada aporte te acerca a tus próximos objetivos."
-                        : "Revisa y organiza cada ingreso y cada salida."}
-              </p>
-            </div>
-            <button
-              className="primary"
-              onClick={() =>
-                open(
-                  page === "Ahorros"
-                    ? "saving"
-                    : page === "Suscripciones"
-                      ? "subscription"
-                      : page === "Mi negocio"
-                        ? "business"
-                        : "expense",
-                )
-              }
-            >
-              <Plus size={18} />
-              Nuevo movimiento
-            </button>
-          </div>
-          {data.loadError && (
-            <div role="alert" className="alert">
-              No se pudo leer el almacenamiento existente. Exporta o recupera tu
-              respaldo antes de reemplazar los datos.
-            </div>
-          )}
-          {error && (
-            <div role="alert" className="alert">
-              {error}
-              <button onClick={() => setError("")} aria-label="Cerrar error">
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          {notice && (
-            <div role="status" className="notice">
-              <CircleCheck size={17} />
-              {notice}
-              <button onClick={() => setNotice("")} aria-label="Cerrar aviso">
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          <div className="period">
-            <div className="month-picker">
-              <button
-                className="iconbtn"
-                aria-label="Mes anterior"
-                onClick={() => shift(-1)}
-              >
-                <ChevronLeft size={17} />
-              </button>
-              <input
-                aria-label="Mes"
-                type="month"
-                value={month}
-                onChange={(e) => {
-                  if (e.target.value) setMonth(e.target.value);
-                }}
-              />
-              <button
-                className="iconbtn"
-                aria-label="Mes siguiente"
-                onClick={() => shift(1)}
-              >
-                <ChevronRight size={17} />
-              </button>
-            </div>
-            <span>Un nuevo mes, nuevas posibilidades.</span>
-          </div>
-          <section className="stats">
-            <article className="stat balance">
-              <div className="stat-label">
-                Disponible del mes
-                <Wallet size={19} />
-              </div>
-              <strong>{money(sums.balance)}</strong>
-              <small>Ingresos − gastos − ahorros</small>
-              <div className="balance-decoration" />
-            </article>
-            {[
-              [
-                "Ingresos",
-                sums.income,
-                ArrowDownLeft,
-                "green",
-                "Personales + negocio",
-              ],
-              [
-                "Gastos",
-                sums.expenses,
-                ArrowUpRight,
-                "orange",
-                "Personales + suscripciones + proveedores",
-              ],
-              [
-                "Ahorros",
-                sums.savings,
-                PiggyBank,
-                "blue",
-                "Aportes registrados este mes",
-              ],
-            ].map(([label, val, Icon, color, desc]) => (
-              <article className="stat" key={label}>
-                <div className="stat-label">
-                  {label}
-                  <span className={`stat-icon ${color}`}>
-                    <Icon size={19} />
-                  </span>
-                </div>
-                <strong>{money(val)}</strong>
-                <small>{desc}</small>
-              </article>
-            ))}
-          </section>
-          {page === "Resumen" && (
-            <section className="overview">
-              <article className="panel distribution">
-                <div className="panel-title">
-                  <h2>¿A dónde va tu dinero?</h2>
-                  <span>Gastos del mes</span>
-                </div>
-                <div className="distribution-body">
-                  <div
-                    className="donut"
-                    style={{
-                      background: outTotal
-                        ? `conic-gradient(#245d4b 0 ${(current.filter((e) => e.type === "expense").reduce((n, e) => n + e.cents, 0) / outTotal) * 100}%, #c6a361 0 ${(1 - current.filter((e) => e.type === "supplier").reduce((n, e) => n + e.cents, 0) / outTotal) * 100}%, #9fb8ad 0 100%)`
-                        : "#edf1ee",
-                    }}
-                  >
-                    <div>
-                      <small>Total gastado</small>
-                      <strong>{money(outTotal)}</strong>
-                    </div>
+          {page === "Panel de reventas" && canManage(accountProfile) ? (
+            <ResellerPanel profile={accountProfile} />
+          ) : user && accountProfile && accountAccess === false ? (
+            <AccessGate profile={accountProfile} onChanged={refreshCloud} />
+          ) : (
+            <>
+              <div className="heading">
+                <div>
+                  <div className="eyebrow">
+                    UN POCO DE ORDEN, MÁS TRANQUILIDAD
                   </div>
-                  <div className="legend">
-                    {outCategories.map((t, i) => {
-                      const v = current
-                        .filter((e) => e.type === t)
-                        .reduce((n, e) => n + e.cents, 0);
-                      return (
-                        <div key={t}>
-                          <i
-                            style={{
-                              background: ["#245d4b", "#c6a361", "#9fb8ad"][i],
-                            }}
-                          />
-                          <span>
-                            {t === "expense"
-                              ? "Personal"
-                              : t === "supplier"
-                                ? "Proveedores"
-                                : "Suscripciones"}
-                            <small>
-                              {outTotal ? Math.round((v / outTotal) * 100) : 0}%
-                              del total
-                            </small>
-                          </span>
-                          <b>{money(v)}</b>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </article>
-              <article className="business-card">
-                <span className="business-icon">
-                  <Store size={23} />
-                </span>
-                <div className="eyebrow">TU NEGOCIO TAMBIÉN CUENTA</div>
-                <h2>Una visión más completa.</h2>
-                <p>
-                  Separa lo personal de tu negocio y conoce el resultado de tus
-                  movimientos.
-                </p>
-                <div className="business-result">
-                  <span>Balance del negocio</span>
-                  <strong>{money(sums.business)}</strong>
+                  <h1>
+                    {page === "Resumen" ? "Tu mes, en equilibrio." : page}
+                  </h1>
+                  <p>
+                    {page === "Resumen"
+                      ? "Una mirada clara a tu dinero personal y de negocio."
+                      : page === "Suscripciones"
+                        ? "Registra tus pagos recurrentes y revisa cuánto suman cada mes."
+                        : page === "Mi negocio"
+                          ? "Tus ventas y pagos a proveedores, en un solo lugar."
+                          : page === "Ahorros"
+                            ? "Cada aporte te acerca a tus próximos objetivos."
+                            : "Revisa y organiza cada ingreso y cada salida."}
+                  </p>
                 </div>
                 <button
-                  onClick={() => {
-                    setPage("Mi negocio");
-                    setFilter("all");
-                  }}
+                  className="primary"
+                  onClick={() =>
+                    open(
+                      page === "Ahorros"
+                        ? "saving"
+                        : page === "Suscripciones"
+                          ? "subscription"
+                          : page === "Mi negocio"
+                            ? "business"
+                            : "expense",
+                    )
+                  }
                 >
-                  Ver mi negocio <ArrowUpRight size={17} />
+                  <Plus size={18} />
+                  Nuevo movimiento
                 </button>
-              </article>
-            </section>
-          )}
-          {page === "Suscripciones" && (
-            <p className="explanation">
-              Cada suscripción representa un pago registrado. Los cobros de
-              otros meses se registran por separado; no se generan cargos
-              automáticos.
-            </p>
-          )}
-          <section className="panel movements">
-            <div className="panel-title">
-              <div>
-                <h2>
-                  {page === "Resumen"
-                    ? "Últimos movimientos"
-                    : page === "Ahorros"
-                      ? "Mis aportes"
-                      : "Movimientos del mes"}
-                </h2>
-                <span>{rows.length} registros en este período</span>
               </div>
-              <div className="backup-actions">
-                <button onClick={exportData}>
-                  <Download size={16} />
-                  <span>Exportar</span>
-                </button>
-                <button onClick={() => file.current.click()}>
-                  <Upload size={16} />
-                  <span>Importar</span>
-                </button>
-                <input
-                  ref={file}
-                  type="file"
-                  accept="application/json,.json"
-                  hidden
-                  onChange={importData}
-                />
+              {data.loadError && (
+                <div role="alert" className="alert">
+                  No se pudo leer el almacenamiento existente. Exporta o
+                  recupera tu respaldo antes de reemplazar los datos.
+                </div>
+              )}
+              {error && (
+                <div role="alert" className="alert">
+                  {error}
+                  <button
+                    onClick={() => setError("")}
+                    aria-label="Cerrar error"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              {notice && (
+                <div role="status" className="notice">
+                  <CircleCheck size={17} />
+                  {notice}
+                  <button
+                    onClick={() => setNotice("")}
+                    aria-label="Cerrar aviso"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              <div className="period">
+                <div className="month-picker">
+                  <button
+                    className="iconbtn"
+                    aria-label="Mes anterior"
+                    onClick={() => shift(-1)}
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+                  <input
+                    aria-label="Mes"
+                    type="month"
+                    value={month}
+                    onChange={(e) => {
+                      if (e.target.value) setMonth(e.target.value);
+                    }}
+                  />
+                  <button
+                    className="iconbtn"
+                    aria-label="Mes siguiente"
+                    onClick={() => shift(1)}
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+                <span>Un nuevo mes, nuevas posibilidades.</span>
               </div>
-            </div>
-            <div className="toolbar">
-              <label className="search">
-                <Search size={17} />
-                <input
-                  aria-label="Buscar movimientos"
-                  placeholder="Buscar un movimiento..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </label>
-              <select
-                aria-label="Filtrar por tipo"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="all">Todos los tipos</option>
-                {Object.entries(types).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
+              <section className="stats">
+                <article className="stat balance">
+                  <div className="stat-label">
+                    Disponible del mes
+                    <Wallet size={19} />
+                  </div>
+                  <strong>{money(sums.balance)}</strong>
+                  <small>Ingresos − gastos − ahorros</small>
+                  <div className="balance-decoration" />
+                </article>
+                {[
+                  [
+                    "Ingresos",
+                    sums.income,
+                    ArrowDownLeft,
+                    "green",
+                    "Personales + negocio",
+                  ],
+                  [
+                    "Gastos",
+                    sums.expenses,
+                    ArrowUpRight,
+                    "orange",
+                    "Personales + suscripciones + proveedores",
+                  ],
+                  [
+                    "Ahorros",
+                    sums.savings,
+                    PiggyBank,
+                    "blue",
+                    "Aportes registrados este mes",
+                  ],
+                ].map(([label, val, Icon, color, desc]) => (
+                  <article className="stat" key={label}>
+                    <div className="stat-label">
+                      {label}
+                      <span className={`stat-icon ${color}`}>
+                        <Icon size={19} />
+                      </span>
+                    </div>
+                    <strong>{money(val)}</strong>
+                    <small>{desc}</small>
+                  </article>
                 ))}
-              </select>
-            </div>
-            {rows.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>DESCRIPCIÓN</th>
-                      <th>TIPO</th>
-                      <th>FECHA</th>
-                      <th className="amount">IMPORTE</th>
-                      <th>
-                        <span className="sr-only">Acciones</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((e) => {
-                      const Icon = icons[e.type];
-                      return (
-                        <tr key={e.id}>
-                          <td>
-                            <div className="entry-name">
-                              <span
-                                className={`entry-icon ${incoming(e.type) ? "green" : e.type === "saving" ? "blue" : "orange"}`}
-                              >
-                                <Icon size={18} />
+              </section>
+              {page === "Resumen" && (
+                <section className="overview">
+                  <article className="panel distribution">
+                    <div className="panel-title">
+                      <h2>¿A dónde va tu dinero?</h2>
+                      <span>Gastos del mes</span>
+                    </div>
+                    <div className="distribution-body">
+                      <div
+                        className="donut"
+                        style={{
+                          background: outTotal
+                            ? `conic-gradient(#245d4b 0 ${(current.filter((e) => e.type === "expense").reduce((n, e) => n + e.cents, 0) / outTotal) * 100}%, #c6a361 0 ${(1 - current.filter((e) => e.type === "supplier").reduce((n, e) => n + e.cents, 0) / outTotal) * 100}%, #9fb8ad 0 100%)`
+                            : "#edf1ee",
+                        }}
+                      >
+                        <div>
+                          <small>Total gastado</small>
+                          <strong>{money(outTotal)}</strong>
+                        </div>
+                      </div>
+                      <div className="legend">
+                        {outCategories.map((t, i) => {
+                          const v = current
+                            .filter((e) => e.type === t)
+                            .reduce((n, e) => n + e.cents, 0);
+                          return (
+                            <div key={t}>
+                              <i
+                                style={{
+                                  background: ["#245d4b", "#c6a361", "#9fb8ad"][
+                                    i
+                                  ],
+                                }}
+                              />
+                              <span>
+                                {t === "expense"
+                                  ? "Personal"
+                                  : t === "supplier"
+                                    ? "Proveedores"
+                                    : "Suscripciones"}
+                                <small>
+                                  {outTotal
+                                    ? Math.round((v / outTotal) * 100)
+                                    : 0}
+                                  % del total
+                                </small>
                               </span>
-                              <b>{e.name}</b>
+                              <b>{money(v)}</b>
                             </div>
-                          </td>
-                          <td>
-                            <span className="tag">{types[e.type]}</span>
-                          </td>
-                          <td>
-                            {new Date(e.date + "T12:00:00").toLocaleDateString(
-                              "es-PE",
-                              { day: "2-digit", month: "short" },
-                            )}
-                          </td>
-                          <td
-                            className={`amount ${incoming(e.type) ? "positive" : ""}`}
-                          >
-                            {incoming(e.type) ? "+" : "−"}
-                            {money(e.cents)}
-                          </td>
-                          <td>
-                            <div className="row-actions">
-                              <button
-                                className="iconbtn"
-                                aria-label={`Editar ${e.name}`}
-                                onClick={() =>
-                                  setForm({
-                                    ...e,
-                                    amount: (e.cents / 100).toFixed(2),
-                                  })
-                                }
-                              >
-                                <Pencil size={15} />
-                              </button>
-                              <button
-                                className="iconbtn"
-                                aria-label={`Eliminar ${e.name}`}
-                                onClick={() => remove(e.id)}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="empty">
-                <span>
-                  <ArrowLeftRight size={26} />
-                </span>
-                <h3>
-                  {search || filter !== "all"
-                    ? "No encontramos movimientos"
-                    : "Aquí empieza tu tranquilidad financiera"}
-                </h3>
-                <p>
-                  {search || filter !== "all"
-                    ? "Prueba con otro filtro o descripción."
-                    : "Registra tu primer movimiento y empieza a ver tu mes con claridad."}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </article>
+                  <article className="business-card">
+                    <span className="business-icon">
+                      <Store size={23} />
+                    </span>
+                    <div className="eyebrow">TU NEGOCIO TAMBIÉN CUENTA</div>
+                    <h2>Una visión más completa.</h2>
+                    <p>
+                      Separa lo personal de tu negocio y conoce el resultado de
+                      tus movimientos.
+                    </p>
+                    <div className="business-result">
+                      <span>Balance del negocio</span>
+                      <strong>{money(sums.business)}</strong>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPage("Mi negocio");
+                        setFilter("all");
+                      }}
+                    >
+                      Ver mi negocio <ArrowUpRight size={17} />
+                    </button>
+                  </article>
+                </section>
+              )}
+              {page === "Suscripciones" && (
+                <p className="explanation">
+                  Cada suscripción representa un pago registrado. Los cobros de
+                  otros meses se registran por separado; no se generan cargos
+                  automáticos.
                 </p>
-                <button onClick={() => open()}>
-                  <Plus size={16} />
-                  Registrar movimiento
-                </button>
-              </div>
-            )}
-          </section>
-          <footer>
-            <span>
-              <Wallet size={14} />
-              Mi Balance · Hecho para tu día a día
-            </span>
-            <span>Los pequeños hábitos hacen grandes cambios.</span>
-          </footer>
+              )}
+              <section className="panel movements">
+                <div className="panel-title">
+                  <div>
+                    <h2>
+                      {page === "Resumen"
+                        ? "Últimos movimientos"
+                        : page === "Ahorros"
+                          ? "Mis aportes"
+                          : "Movimientos del mes"}
+                    </h2>
+                    <span>{rows.length} registros en este período</span>
+                  </div>
+                  <div className="backup-actions">
+                    <button onClick={exportData}>
+                      <Download size={16} />
+                      <span>Exportar</span>
+                    </button>
+                    <button onClick={() => file.current.click()}>
+                      <Upload size={16} />
+                      <span>Importar</span>
+                    </button>
+                    <input
+                      ref={file}
+                      type="file"
+                      accept="application/json,.json"
+                      hidden
+                      onChange={importData}
+                    />
+                  </div>
+                </div>
+                <div className="toolbar">
+                  <label className="search">
+                    <Search size={17} />
+                    <input
+                      aria-label="Buscar movimientos"
+                      placeholder="Buscar un movimiento..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </label>
+                  <select
+                    aria-label="Filtrar por tipo"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  >
+                    <option value="all">Todos los tipos</option>
+                    {Object.entries(types).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {rows.length ? (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>DESCRIPCIÓN</th>
+                          <th>TIPO</th>
+                          <th>FECHA</th>
+                          <th className="amount">IMPORTE</th>
+                          <th>
+                            <span className="sr-only">Acciones</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((e) => {
+                          const Icon = icons[e.type];
+                          return (
+                            <tr key={e.id}>
+                              <td>
+                                <div className="entry-name">
+                                  <span
+                                    className={`entry-icon ${incoming(e.type) ? "green" : e.type === "saving" ? "blue" : "orange"}`}
+                                  >
+                                    <Icon size={18} />
+                                  </span>
+                                  <b>{e.name}</b>
+                                </div>
+                              </td>
+                              <td>
+                                <span className="tag">{types[e.type]}</span>
+                              </td>
+                              <td>
+                                {new Date(
+                                  e.date + "T12:00:00",
+                                ).toLocaleDateString("es-PE", {
+                                  day: "2-digit",
+                                  month: "short",
+                                })}
+                              </td>
+                              <td
+                                className={`amount ${incoming(e.type) ? "positive" : ""}`}
+                              >
+                                {incoming(e.type) ? "+" : "−"}
+                                {money(e.cents)}
+                              </td>
+                              <td>
+                                <div className="row-actions">
+                                  <button
+                                    className="iconbtn"
+                                    aria-label={`Editar ${e.name}`}
+                                    onClick={() =>
+                                      setForm({
+                                        ...e,
+                                        amount: (e.cents / 100).toFixed(2),
+                                      })
+                                    }
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
+                                  <button
+                                    className="iconbtn"
+                                    aria-label={`Eliminar ${e.name}`}
+                                    onClick={() => remove(e.id)}
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty">
+                    <span>
+                      <ArrowLeftRight size={26} />
+                    </span>
+                    <h3>
+                      {search || filter !== "all"
+                        ? "No encontramos movimientos"
+                        : "Aquí empieza tu tranquilidad financiera"}
+                    </h3>
+                    <p>
+                      {search || filter !== "all"
+                        ? "Prueba con otro filtro o descripción."
+                        : "Registra tu primer movimiento y empieza a ver tu mes con claridad."}
+                    </p>
+                    <button onClick={() => open()}>
+                      <Plus size={16} />
+                      Registrar movimiento
+                    </button>
+                  </div>
+                )}
+              </section>
+              <footer>
+                <span>
+                  <Wallet size={14} />
+                  Mi Balance · Hecho para tu día a día
+                </span>
+                <span>Los pequeños hábitos hacen grandes cambios.</span>
+              </footer>
+            </>
+          )}
         </div>
       </main>
       {form && (
@@ -865,7 +909,14 @@ function App() {
           </section>
         </div>
       )}
-      {account && <Account user={user} onClose={() => setAccount(false)} />}
+      {account && (
+        <Account
+          user={user}
+          profile={accountProfile}
+          onChanged={refreshCloud}
+          onClose={() => setAccount(false)}
+        />
+      )}
     </div>
   );
 }

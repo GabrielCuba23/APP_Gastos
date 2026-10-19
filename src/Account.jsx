@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { cloud, confirmationRedirectUrl } from "./cloud";
-export default function Account({ user, onClose }) {
+import PasswordChange from "./PasswordChange";
+export default function Account({ user, profile, onChanged, onClose }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [message, setMessage] = useState(""),
@@ -87,6 +88,12 @@ export default function Account({ user, onClose }) {
             <p>
               Sesión de {user.email}. Tus movimientos se guardan en tu cuenta.
             </p>
+            {profile && (
+              <details className="password-details">
+                <summary>Cambiar contraseña</summary>
+                <PasswordChange onChanged={onChanged} />
+              </details>
+            )}
             <button
               className="primary"
               onClick={async () => {

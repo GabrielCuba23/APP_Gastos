@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test tests/finance.test.js",
+    "test": "node --test tests/*.test.js",
     "test:e2e": "playwright test",
     "android:sync": "npm run build && cap sync android",
-    "build:portable": "vite build --config vite.portable.config.js"
+    "build:portable": "vite build --config vite.portable.config.js",
+    "build:edge": "node scripts/build-edge.mjs"
   },
   "repository": {
     "type": "git",
@@ -37,8 +38,10 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
+    "@electric-sql/pglite": "^0.5.10",
     "@playwright/test": "^1.64.1",
     "@vitejs/plugin-react": "^6.1.2",
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.10",
     "vite": "^8.3.4",
     "vite-plugin-singlefile": "^2.3.4"
