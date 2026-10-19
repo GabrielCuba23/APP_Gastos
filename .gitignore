@@ -9,3 +9,5 @@ android/**/build/
 
 .env
 .env.local
+
+portable/

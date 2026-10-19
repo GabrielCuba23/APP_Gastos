@@ -2,6 +2,14 @@
 
 App en español para finanzas personales y de negocio, web y Android. Moneda inicial: soles (PEN). Registra ingresos personales, ingresos del negocio, gastos personales, pagos a proveedores, suscripciones y aportes a ahorros. Incluye resumen por mes, balance del negocio, edición, eliminación, búsqueda, filtros y respaldo JSON.
 
+## Descargas y acceso
+
+- [Descargar APK Android de prueba](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance-debug.apk).
+- [Descargar versión web en un solo HTML](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance.html). Guarda el archivo y ábrelo con Chrome, Edge o Firefox. Funciona sin servidor, en modo local. Usa el mismo archivo y navegador para conservar sus datos; conserva respaldos.
+- El workflow `Publish web` despliega en GitHub Pages al subir a `main`. Si GitHub impide habilitar Pages automáticamente, entra en **Settings → Pages → Build and deployment → Source → GitHub Actions**. Luego, en **Actions → Publish web → Run workflow**, ejecútalo sobre `main`. La dirección prevista es `https://gabrielcuba23.github.io/APP_Gastos/`; solo estará disponible después de un despliegue exitoso.
+
+Las descargas versionadas son una entrega de la app en modo local, sin un proyecto Supabase conectado. Al cambiar la aplicación, actualízalas explícitamente: genera `npm run build:portable` y copia `portable/index.html` a `downloads/mi-balance.html`; para APK sigue la compilación Android y copia la APK resultante a `downloads/mi-balance-debug.apk`. Verifica las dos descargas antes de publicar. No son actualizaciones automáticas.
+
 ## Desarrollo web
 
 Requiere Node.js 24 (o Node 22.12+) y npm.
