@@ -16,7 +16,7 @@ export default function Account({ user, profile, onChanged, onClose }) {
       const { error } = await cloud.auth[
         signup ? "signUp" : "signInWithPassword"
       ]({
-        email,
+        email: email.trim().toLowerCase(),
         password,
         ...(signup
           ? { options: { emailRedirectTo: confirmationRedirectUrl } }
@@ -34,6 +34,14 @@ export default function Account({ user, profile, onChanged, onClose }) {
         setNeedsConfirmation(true);
         setMessage(
           "Confirma tu correo antes de ingresar. Puedes solicitar un nuevo enlace abajo.",
+        );
+      } else if (
+        err.code === "invalid_credentials" ||
+        err.code === "invalid_grant" ||
+        err.message === "Invalid login credentials"
+      ) {
+        setMessage(
+          "El correo o la contraseña no son correctos. Si es una cuenta de cliente, solicita al administrador una nueva contraseña temporal.",
         );
       } else setMessage(err.message);
     } finally {

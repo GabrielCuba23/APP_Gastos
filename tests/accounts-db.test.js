@@ -32,6 +32,12 @@ test("PostgreSQL enforces private balances, roles, expiry and renewal", async ()
     await db.exec(base);
     await db.exec(migration);
     await db.exec(migration);
+    const resetMigration = await readFile(
+      "supabase/migrations/20261019_password_reset.sql",
+      "utf8",
+    );
+    await db.exec(resetMigration);
+    await db.exec(resetMigration);
     await db.query(
       "update public.account_profiles set role='admin',expires_at=null where user_id=$1",
       [ids.admin],
@@ -220,6 +226,78 @@ test("PostgreSQL enforces private balances, roles, expiry and renewal", async ()
         )
       ).rows[0].allowed,
       true,
+    );
+    const beforeReset = (
+      await db.query(
+        "select status,plan_name,expires_at,owner_id from public.account_profiles where user_id=$1",
+        [ids.client],
+      )
+    ).rows[0];
+    const balanceBeforeReset = (
+      await db.query(
+        "select data,revision from public.balances where user_id=$1",
+        [ids.client],
+      )
+    ).rows[0];
+    await assert.rejects(
+      () =>
+        asUser(ids.client, () =>
+          db.query("select public.prepare_account_password_reset($1,$2)", [
+            ids.reseller,
+            ids.client,
+          ]),
+        ),
+      /permission denied/,
+    );
+    await db.exec("set role service_role");
+    await assert.rejects(
+      () =>
+        db.query("select public.prepare_account_password_reset($1,$2)", [
+          ids.reseller,
+          ids.other,
+        ]),
+      /No autorizado/,
+    );
+    await assert.rejects(
+      () =>
+        db.query("select public.prepare_account_password_reset($1,$1)", [
+          ids.admin,
+        ]),
+      /No puedes modificar/,
+    );
+    const reset = (
+      await db.query(
+        "select public.prepare_account_password_reset($1,$2) as email",
+        [ids.reseller, ids.client],
+      )
+    ).rows[0];
+    assert.equal(reset.email, "client@example.com");
+    await db.exec("reset role");
+    assert.equal(
+      (
+        await asUser(ids.client, () =>
+          db.query("select public.has_finance_access() as allowed"),
+        )
+      ).rows[0].allowed,
+      false,
+    );
+    assert.deepEqual(
+      (
+        await db.query(
+          "select status,plan_name,expires_at,owner_id from public.account_profiles where user_id=$1",
+          [ids.client],
+        )
+      ).rows[0],
+      beforeReset,
+    );
+    assert.deepEqual(
+      (
+        await db.query(
+          "select data,revision from public.balances where user_id=$1",
+          [ids.client],
+        )
+      ).rows[0],
+      balanceBeforeReset,
     );
     await assert.rejects(() => db.exec(base), /ya están instaladas/);
     await db.exec("rollback");

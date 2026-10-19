@@ -42,6 +42,9 @@ export default function ResellerPanel({ profile }) {
     [form, setForm] = useState(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const [apiVersion, setApiVersion] = useState(1),
+    [resetForm, setResetForm] = useState(null),
+    [showPassword, setShowPassword] = useState(false);
   const isAdmin = profile.role === "admin";
   async function load() {
     setLoading(true);
@@ -53,6 +56,7 @@ export default function ResellerPanel({ profile }) {
       });
       setAccounts(data.accounts);
       setCount(data.count);
+      setApiVersion(data.apiVersion ?? 1);
       setError("");
     } catch (err) {
       setError(err.message);
@@ -68,6 +72,7 @@ export default function ResellerPanel({ profile }) {
         if (!cancelled) {
           setAccounts(data.accounts);
           setCount(data.count);
+          setApiVersion(data.apiVersion ?? 1);
           setError("");
         }
       })
@@ -83,11 +88,16 @@ export default function ResellerPanel({ profile }) {
   }, [page, query]);
   async function submit(event) {
     event.preventDefault();
+    if (!form.user_id && form.password !== form.password_confirmation) {
+      setError("Las contraseñas temporales no coinciden.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
+      const { password_confirmation, ...payload } = form;
       await manageAccounts({
-        ...form,
+        ...payload,
         action: form.user_id ? "update" : "create",
       });
       setNotice(
@@ -96,6 +106,32 @@ export default function ResellerPanel({ profile }) {
           : "Cuenta creada. Entrega la contraseña temporal al cliente por un medio privado; deberá cambiarla al ingresar.",
       );
       setForm(null);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function resetPassword(event) {
+    event.preventDefault();
+    if (resetForm.password !== resetForm.confirmation) {
+      setError("Las contraseñas temporales no coinciden.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const result = await manageAccounts({
+        action: "reset_password",
+        user_id: resetForm.user_id,
+        password: resetForm.password,
+      });
+      setResetForm(null);
+      setShowPassword(false);
+      setNotice(
+        `Contraseña temporal actualizada. El cliente debe ingresar con ${result.email} y cambiarla al acceder.`,
+      );
       await load();
     } catch (err) {
       setError(err.message);
@@ -150,7 +186,7 @@ export default function ResellerPanel({ profile }) {
           {notice}
         </div>
       )}
-      {error && !form && (
+      {error && !form && !resetForm && (
         <div role="alert" className="alert">
           {error}
         </div>
@@ -254,6 +290,24 @@ export default function ResellerPanel({ profile }) {
                         <Pencil size={14} />
                         Gestionar
                       </button>
+                      {apiVersion >= 2 && (
+                        <button
+                          className="account-button reset-account-button"
+                          aria-label={`Restablecer ${account.email}`}
+                          onClick={() => {
+                            setError("");
+                            setShowPassword(false);
+                            setResetForm({
+                              user_id: account.user_id,
+                              email: account.email,
+                              password: "",
+                              confirmation: "",
+                            });
+                          }}
+                        >
+                          Nueva contraseña
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -295,6 +349,90 @@ export default function ResellerPanel({ profile }) {
         actualiza el plan y su vencimiento. Suspender un revendedor suspende
         también el acceso en la nube de sus clientes.
       </p>
+      {resetForm && (
+        <div className="modal-backdrop">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-title"
+          >
+            <div className="panel-title">
+              <h2 id="reset-title">Restablecer contraseña</h2>
+              <button
+                className="iconbtn"
+                disabled={busy}
+                aria-label="Cerrar restablecimiento"
+                onClick={() => {
+                  setResetForm(null);
+                  setShowPassword(false);
+                }}
+              >
+                <X />
+              </button>
+            </div>
+            <p>{resetForm.email}</p>
+            <p>
+              Asigna una nueva contraseña temporal. El cliente deberá cambiarla
+              al ingresar; sus movimientos y su plan se conservarán.
+            </p>
+            <form onSubmit={resetPassword}>
+              <label>
+                Nueva contraseña temporal
+                <input
+                  required
+                  type={showPassword ? "text" : "password"}
+                  minLength={10}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  value={resetForm.password}
+                  onChange={(e) =>
+                    setResetForm({ ...resetForm, password: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Confirmar nueva contraseña temporal
+                <input
+                  required
+                  type={showPassword ? "text" : "password"}
+                  minLength={10}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  value={resetForm.confirmation}
+                  onChange={(e) =>
+                    setResetForm({ ...resetForm, confirmation: e.target.value })
+                  }
+                />
+              </label>
+              <button
+                className="account-button"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Ocultar contraseñas" : "Mostrar contraseñas"}
+              </button>
+              {error && (
+                <p className="alert" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="form-actions">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setResetForm(null)}
+                >
+                  Cancelar
+                </button>
+                <button className="primary" disabled={busy}>
+                  {busy ? "Actualizando…" : "Guardar contraseña temporal"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
       {form && (
         <div className="modal-backdrop">
           <section
@@ -364,6 +502,20 @@ export default function ResellerPanel({ profile }) {
                       autoComplete="new-password"
                       value={form.password}
                       onChange={(e) => change("password", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Repetir contraseña temporal
+                    <input
+                      type="password"
+                      required
+                      minLength={10}
+                      maxLength={128}
+                      autoComplete="new-password"
+                      value={form.password_confirmation || ""}
+                      onChange={(e) =>
+                        change("password_confirmation", e.target.value)
+                      }
                     />
                   </label>
                   {isAdmin && (

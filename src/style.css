@@ -1194,3 +1194,7 @@ footer span:first-child {
     padding: 7px;
   }
 }
+.reset-account-button {
+  margin-left: 7px;
+  margin-block: 3px;
+}

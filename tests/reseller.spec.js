@@ -10,6 +10,8 @@ async function accountSession(
     passwordRequired = false,
     allowed = true,
     missingMigration = false,
+    apiVersion = 2,
+    initialAccounts = [],
   } = {},
 ) {
   const profile = {
@@ -62,7 +64,7 @@ async function accountSession(
       },
     },
   );
-  let accounts = [];
+  let accounts = initialAccounts;
   const calls = [];
   await page.route(config.url + "/**", async (route) => {
     const url = new URL(route.request().url());
@@ -92,7 +94,8 @@ async function accountSession(
       expect(route.request().headers().authorization).toBe("Bearer " + token);
       const body = route.request().postDataJSON();
       calls.push(body);
-      if (body.action === "list") data = { accounts, count: accounts.length };
+      if (body.action === "list")
+        data = { accounts, count: accounts.length, apiVersion };
       else if (body.action === "create") {
         accounts = [
           {
@@ -116,6 +119,10 @@ async function accountSession(
             : row,
         );
         data = { ok: true };
+      } else if (body.action === "reset_password") {
+        const target = accounts.find((row) => row.user_id === body.user_id);
+        target.password_change_required = true;
+        data = { ok: true, email: target.email };
       } else if (body.action === "change_password") {
         profile.password_change_required = false;
         data = { ok: true };
@@ -148,7 +155,12 @@ test("administrator creates and suspends a customer through the panel", async ({
   await page.getByLabel("Nombre del cliente").fill("Cliente de prueba");
   await page.getByLabel("Correo del cliente").fill("cliente@example.com");
   await page.getByLabel("Teléfono", { exact: true }).fill("+51 900 100 200");
-  await page.getByLabel("Contraseña temporal").fill("Temporal-only-123");
+  await page
+    .getByLabel("Contraseña temporal", { exact: true })
+    .fill("Temporal-only-123");
+  await page
+    .getByLabel("Repetir contraseña temporal", { exact: true })
+    .fill("Temporal-only-123");
   await page.getByLabel("Vencimiento", { exact: true }).fill("2099-10-31");
   await page
     .getByRole("dialog")
@@ -242,5 +254,78 @@ test("existing signed-in accounts keep working before the optional migration", a
   await expect(page.getByText("Sincronizado", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Panel de reventas", exact: true }),
+  ).toHaveCount(0);
+});
+
+const resetClient = {
+  user_id: customerId,
+  email: "customer@example.com",
+  full_name: "Cliente",
+  phone: "+51 999 999 999",
+  role: "client",
+  owner_id: id,
+  status: "active",
+  expires_at: "2099-01-01T23:59:59Z",
+  plan_name: "Anual",
+  password_change_required: false,
+};
+test("manager resets the temporary password after matching confirmation", async ({
+  page,
+}) => {
+  const { calls } = await accountSession(page, {
+    initialAccounts: [{ ...resetClient }],
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Panel de reventas", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Restablecer customer@example.com" })
+    .click();
+  await page
+    .getByLabel("Nueva contraseña temporal", { exact: true })
+    .fill("New-private-password");
+  await page
+    .getByLabel("Confirmar nueva contraseña temporal", { exact: true })
+    .fill("Does-not-match");
+  await page
+    .getByRole("button", { name: "Guardar contraseña temporal" })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("no coinciden");
+  expect(calls.some((c) => c.action === "reset_password")).toBe(false);
+  await page
+    .getByLabel("Confirmar nueva contraseña temporal", { exact: true })
+    .fill("New-private-password");
+  await page
+    .getByRole("button", { name: "Guardar contraseña temporal" })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "Contraseña temporal actualizada",
+  );
+  await expect(page.locator("tbody")).toContainText("Anual");
+  await expect(page.locator("tbody")).toContainText("Cambio de contraseña");
+  expect(calls.find((c) => c.action === "reset_password")).toEqual({
+    action: "reset_password",
+    user_id: customerId,
+    password: "New-private-password",
+  });
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+test("reset action stays hidden until the updated service is deployed", async ({
+  page,
+}) => {
+  await accountSession(page, {
+    apiVersion: 1,
+    initialAccounts: [{ ...resetClient }],
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Panel de reventas", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Gestionar customer@example.com" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Restablecer customer@example.com" }),
   ).toHaveCount(0);
 });

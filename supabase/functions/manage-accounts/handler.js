@@ -118,7 +118,11 @@ export function createHandler({
           .order("created_at", { ascending: false })
           .range(page * 25, page * 25 + 24);
         check(result, "No se pudo cargar la lista de cuentas.");
-        return reply(200, { accounts: result.data, count: result.count });
+        return reply(200, {
+          accounts: result.data,
+          count: result.count,
+          apiVersion: 2,
+        });
       }
       if (input.action === "create") {
         const { change, email, password } = validateChange(input, true);
@@ -156,7 +160,7 @@ export function createHandler({
         }
         return reply(200, { ok: true, user_id: id });
       }
-      if (input.action === "update") {
+      if (["update", "reset_password"].includes(input.action)) {
         if (
           typeof input.user_id !== "string" ||
           !/^[0-9a-f-]{36}$/i.test(input.user_id)
@@ -171,6 +175,24 @@ export function createHandler({
           "Cuenta no encontrada.",
         );
         assertTarget(actor, target);
+        if (input.action === "reset_password") {
+          const password = validatePassword(input.password);
+          const prepared = await service.rpc("prepare_account_password_reset", {
+            actor_id: user.id,
+            target_id: target.user_id,
+          });
+          check(
+            prepared,
+            "No se pudo preparar el restablecimiento. El administrador debe aplicar la migración de contraseñas y revisar los permisos.",
+          );
+          check(
+            await service.auth.admin.updateUserById(target.user_id, {
+              password,
+            }),
+            "No se pudo cambiar la contraseña. La cuenta seguirá requiriendo un cambio al ingresar; vuelve a intentar con una contraseña diferente.",
+          );
+          return reply(200, { ok: true, email: prepared.data });
+        }
         const { change } = validateChange(input);
         check(
           await service.rpc("manage_account", {

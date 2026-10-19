@@ -8,6 +8,8 @@ En el SQL Editor del proyecto `ofxcqqmshgzszwwasdhs`, ejecuta TODO `migrations/2
 
 Las cuentas que existan antes de la migración reciben 30 días iniciales. Las cuentas nuevas creadas desde el registro público quedan sin plan hasta que las active el administrador. Los registros financieros existentes se conservan. La migración puede repetirse sin reiniciar planes ya asignados.
 
+Ejecuta también `migrations/20261019_password_reset.sql` para habilitar el restablecimiento de contraseñas. Puede repetirse sin borrar registros.
+
 Después ejecuta `bootstrap-admin.sql`, sustituyendo `TU_CORREO_AQUI` por el correo de tu cuenta ya registrada. Esto asigna administrador solo a esa cuenta. No publiques un archivo con tu correo o contraseña.
 
 ## 2. Desplegar el servicio de cuentas
@@ -51,3 +53,18 @@ Los orígenes predeterminados son GitHub Pages de esta cuenta, los WebViews loca
 - El modo local sin sesión sigue disponible como demostración independiente. La licencia controla el acceso a datos y funciones en la nube; no es un mecanismo para borrar o bloquear archivos locales de dispositivos ajenos.
 - No hay borrado de clientes desde el panel. Se suspende el acceso para conservar sus registros.
 - La migración y la función están probadas localmente con PostgreSQL y sesiones simuladas. La validación real requiere ejecutar los pasos anteriores en tu proyecto.
+
+
+## Recuperar un cliente con credenciales rechazadas
+
+Si aparece «Invalid login credentials», el proveedor no acepta el correo y la contraseña suministrados. El panel no puede leer la contraseña actual. Para asignar una nueva sin borrar el cliente:
+
+1. Si ya instalaste reventas, ejecuta únicamente `migrations/20261019_password_reset.sql` en el SQL Editor.
+2. Actualiza la función existente `manage-accounts`: reemplaza su `index.ts` por TODO `deploy/manage-accounts.ts` y vuelve a desplegarla. Mantén desactivado Verify JWT del gateway; la función valida sesión y permisos internamente.
+3. Recarga la web y abre el Panel de reventas. El botón **Nueva contraseña** aparece cuando el servicio devuelve su versión actualizada.
+4. Pulsa ese botón en la fila del cliente, escribe y confirma una contraseña temporal nueva (10–128 caracteres, sin espacios iniciales o finales).
+5. El aviso de éxito indica el correo real de acceso, obtenido de Supabase Auth. Ingresa con ese correo y la contraseña temporal nueva. El cliente deberá cambiarla después del ingreso.
+
+El restablecimiento conserva el plan, vencimiento, estado y movimientos; no renueva una cuenta vencida ni activa una suspendida. Solo el administrador y el revendedor propietario pueden usarlo. La preparación y la auditoría se hacen en SQL antes de llamar a Supabase Auth; si este último rechaza el cambio, se muestra un error y puede quedar pendiente el cambio obligatorio al siguiente ingreso. No se presenta como un restablecimiento exitoso. El usuario puede volver a intentarlo con una contraseña diferente.
+
+No se guardan contraseñas en perfiles ni auditoría. La función solo las envía a Supabase Auth. La creación de cuentas y el restablecimiento solicitan confirmarlas dos veces para evitar errores de escritura.

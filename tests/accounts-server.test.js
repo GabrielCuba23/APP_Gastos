@@ -257,3 +257,78 @@ test("reseller listing is restricted to owned clients before pagination", async 
     ["role", "client"],
   ]);
 });
+
+test("password reset requires ownership and prepares SQL before changing Auth", async () => {
+  const target = { ...client, user_id: "00000000-0000-4000-8000-000000000003" };
+  const calls = [];
+  const service = {
+    from() {
+      return {
+        select() {
+          return {
+            eq(column, value) {
+              return {
+                single: async () => ({
+                  data: value === reseller.user_id ? reseller : target,
+                }),
+              };
+            },
+          };
+        },
+      };
+    },
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      return { data: "client@example.com" };
+    },
+    auth: {
+      admin: {
+        updateUserById: async (id, args) => {
+          calls.push({ name: "auth-password", id, args });
+          return {};
+        },
+      },
+    },
+  };
+  const handler = createHandler({
+    service,
+    verifyUser: async () => ({ data: { user: { id: reseller.user_id } } }),
+  });
+  const request = () =>
+    new Request("https://example.test", {
+      method: "POST",
+      headers: { authorization: "Bearer test-only" },
+      body: JSON.stringify({
+        action: "reset_password",
+        user_id: target.user_id,
+        password: "New-private-password",
+      }),
+    });
+  let response = await handler(request());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    email: "client@example.com",
+  });
+  assert.equal(calls[0].name, "prepare_account_password_reset");
+  assert.equal("password" in calls[0].args, false);
+  assert.deepEqual(calls[1], {
+    name: "auth-password",
+    id: target.user_id,
+    args: { password: "New-private-password" },
+  });
+  calls.length = 0;
+  target.owner_id = "other-seller";
+  response = await handler(request());
+  assert.equal(response.status, 403);
+  assert.equal(calls.length, 0);
+  target.owner_id = reseller.user_id;
+  service.rpc = async () => ({ error: { code: "PGRST202" } });
+  response = await handler(request());
+  assert.equal(response.status, 400);
+  assert.equal(
+    calls.length,
+    0,
+    "missing migration must not change the password",
+  );
+});

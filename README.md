@@ -36,7 +36,7 @@ npm run android:sync
 
 ## Panel de reventas
 
-La ampliación incluye administrador, revendedores y clientes; alta con correo/teléfono/contraseña temporal, planes con vencimiento, renovaciones manuales, suspensión y cambio obligatorio de la contraseña temporal. Los movimientos de cada cliente permanecen privados.
+La ampliación incluye administrador, revendedores y clientes; alta con correo/teléfono/contraseña temporal, planes con vencimiento, renovaciones manuales, suspensión, restablecimiento de contraseñas temporales y cambio obligatorio de la contraseña temporal. Los movimientos de cada cliente permanecen privados.
 
 **Activación necesaria:** sigue [supabase/README.md](supabase/README.md). Se requiere ejecutar la migración de cuentas, asignar el administrador con tu correo y desplegar `manage-accounts` como Edge Function. Subir el frontend no despliega ese servicio ni asigna roles. Mientras no se aplique la migración, las cuentas de la versión anterior siguen usando sus movimientos y el panel permanece oculto.
 

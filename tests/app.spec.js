@@ -139,3 +139,34 @@ test("signup and resend use the app path in confirmation redirects", async ({
   expect(signups).toBe(1);
   expect(resends).toBe(1);
 });
+
+test("sign-in normalizes email and explains rejected credentials in Spanish", async ({
+  page,
+}) => {
+  const { readFile } = await import("node:fs/promises");
+  const config = JSON.parse(await readFile("src/cloud-config.json", "utf8"));
+  await page.route(
+    config.url + "/auth/v1/token?grant_type=password",
+    async (route) => {
+      expect(route.request().postDataJSON().email).toBe("cliente@example.com");
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "invalid_credentials",
+          msg: "Invalid login credentials",
+        }),
+      });
+    },
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "Ingresar / Crear cuenta" }).click();
+  await page.getByLabel("Correo electrónico").fill("CLIENTE@EXAMPLE.COM");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("Private-test-password");
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "solicita al administrador una nueva contraseña temporal",
+  );
+});

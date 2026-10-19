@@ -34,6 +34,11 @@ export function validatePassword(value) {
       400,
       "La contraseña debe tener entre 10 y 128 caracteres.",
     );
+  if (value !== value.trim())
+    throw new ApiError(
+      400,
+      "La contraseña no puede empezar ni terminar con espacios.",
+    );
   return value;
 }
 export function validateChange(input, create = false, now = Date.now()) {
