@@ -30,7 +30,7 @@ jobs:
       - name: Include client tutorial
         run: |
           mkdir -p dist/tutorial
-          cp tutorial/index.html tutorial/portada.jpg tutorial/subtitulos.vtt dist/tutorial/
+          cp tutorial/index.html tutorial/portada.jpg tutorial/subtitulos.vtt tutorial/guion.txt dist/tutorial/
           cp downloads/tutorial-cliente.mp4 dist/tutorial/video.mp4
       - uses: actions/configure-pages@v5
         with:

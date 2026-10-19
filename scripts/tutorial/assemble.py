@@ -209,6 +209,11 @@ def main() -> None:
     if abs(final_duration - duration) > 0.15:
         raise ValueError("La duración final difiere de la cronología de grabación.")
     temporary.replace(output)
+    timing_fields = ("key", "title", "narration", "start", "end", "speechDuration")
+    (assets / "timeline.json").write_text(json.dumps({
+        "duration": final_duration,
+        "scenes": [{key: scene[key] for key in timing_fields} for scene in scenes],
+    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     poster_time = min(float(scenes[0]["start"]) + 4.0, float(scenes[0]["end"]) - 0.2)
     run([
         arguments.ffmpeg, "-hide_banner", "-loglevel", "error", "-y",

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
 import subprocess
 import sys
@@ -109,6 +110,52 @@ def voice_command(tools_root: Path) -> list[str]:
     return command + ["-v", "es-419", "-s", "158", "-p", "44", "-a", "125"]
 
 
+def neural_renderer(model_dir: Path, threads: int, speed: float):
+    """Load the reviewed Piper voice once; dependencies stay outside the repo."""
+    try:
+        import numpy as np
+        import sherpa_onnx
+    except ImportError as error:
+        raise ValueError(
+            "Faltan sherpa-onnx/numpy. Instala las dependencias documentadas y "
+            "configura PYTHONPATH; usa --engine legacy solo si deseas la voz anterior."
+        ) from error
+    model = model_dir / "es_MX-claude-high.onnx"
+    tokens = model_dir / "tokens.txt"
+    data = model_dir / "espeak-ng-data"
+    if not model.is_file() or not tokens.is_file() or not data.is_dir():
+        raise ValueError(f"Modelo neuronal incompleto en {model_dir}; consulta scripts/tutorial/README.md.")
+    config = sherpa_onnx.OfflineTtsConfig(
+        model=sherpa_onnx.OfflineTtsModelConfig(
+            vits=sherpa_onnx.OfflineTtsVitsModelConfig(
+                model=str(model), tokens=str(tokens), data_dir=str(data),
+            ),
+            num_threads=threads,
+            provider="cpu",
+        ),
+        max_num_sentences=2,
+    )
+    if not config.validate():
+        raise ValueError("La configuración de voz neuronal no es válida.")
+    tts = sherpa_onnx.OfflineTts(config)
+
+    def render(text: str, destination: Path) -> None:
+        audio = tts.generate(text, sid=0, speed=speed)
+        if audio.sample_rate != 22050:
+            raise ValueError(f"El modelo produjo {audio.sample_rate} Hz; se requieren 22050 Hz.")
+        samples = np.asarray(audio.samples)
+        if samples.ndim != 1 or samples.size == 0 or not np.isfinite(samples).all():
+            raise ValueError("El modelo no produjo audio mono válido.")
+        pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype("<i2").tobytes()
+        with wave.open(str(destination), "wb") as output:
+            output.setnchannels(1)
+            output.setsampwidth(2)
+            output.setframerate(22050)
+            output.writeframes(pcm)
+
+    return render
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -119,16 +166,36 @@ def main() -> None:
         "--tools-root", type=Path, default=ROOT.parent / "tutorial-tools/root",
         help="Local eSpeak NG fallback installation, used only if absent from PATH.",
     )
+    parser.add_argument("--engine", choices=("neural", "legacy"), default="neural")
+    parser.add_argument(
+        "--model-dir", type=Path,
+        default=ROOT.parent / "tutorial-tools/neural/vits-piper-es_MX-claude-high-int8",
+        help="Extracted official sherpa-onnx Piper Spanish model.",
+    )
+    parser.add_argument("--speed", type=float, default=0.95, help="Neural speech speed; default 0.95.")
+    parser.add_argument("--threads", type=int, default=2, help="Neural inference CPU threads.")
     arguments = parser.parse_args()
+    if arguments.threads < 1 or not math.isfinite(arguments.speed) or arguments.speed <= 0:
+        raise ValueError("--threads y --speed deben ser positivos.")
     output = arguments.output_dir.expanduser().resolve()
-    voice = voice_command(arguments.tools_root.expanduser().resolve())
+    render = None
+    voice = None
+    if arguments.engine == "neural":
+        render = neural_renderer(
+            arguments.model_dir.expanduser().resolve(), arguments.threads, arguments.speed,
+        )
+    else:
+        voice = voice_command(arguments.tools_root.expanduser().resolve())
     output.mkdir(parents=True, exist_ok=True)
     result = []
     for key, title, benefit, narration in SCENES:
         audio_path = output / f"{key}.wav"
         text_path = output / f"{key}.txt"
         text_path.write_text(narration, encoding="utf-8")
-        subprocess.run(voice + ["-f", str(text_path), "-w", str(audio_path)], check=True)
+        if render is not None:
+            render(narration, audio_path)
+        else:
+            subprocess.run(voice + ["-f", str(text_path), "-w", str(audio_path)], check=True)
         with wave.open(str(audio_path), "rb") as audio:
             if (
                 audio.getnchannels(), audio.getsampwidth(),
@@ -150,6 +217,16 @@ def main() -> None:
     script_path.parent.mkdir(parents=True, exist_ok=True)
     script_path.write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    reading_script = [
+        "MI BALANCE · TUTORIAL PARA CLIENTES", "",
+        "Guion de narración. Demostración con datos ficticios.",
+        "Cada sección corresponde a una escena. No leer los títulos si no lo deseas.", "",
+    ]
+    for scene in result:
+        reading_script.extend([scene["title"], scene["narration"], ""])
+    (ROOT / "tutorial/guion.txt").write_text(
+        "\n".join(reading_script).rstrip() + "\n", encoding="utf-8"
     )
     print(json.dumps({
         "seconds": sum(scene["duration"] for scene in result),

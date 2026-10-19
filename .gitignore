@@ -2,6 +2,7 @@ node_modules/
 dist/
 playwright-report/
 test-results/
+__pycache__/
 android/.gradle/
 android/local.properties
 android/**/build/
