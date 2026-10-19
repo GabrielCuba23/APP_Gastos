@@ -5,6 +5,7 @@ App en español para finanzas personales y de negocio, web y Android. Moneda ini
 ## Descargas y acceso
 
 - [Descargar APK Android de prueba](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance-debug.apk).
+- [Descargar web en ZIP](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance-web.zip): extrae el ZIP y abre `mi-balance.html`.
 - [Descargar versión web en un solo HTML](https://github.com/GabrielCuba23/APP_Gastos/raw/refs/heads/main/downloads/mi-balance.html). Guarda el archivo y ábrelo con Chrome, Edge o Firefox. Funciona sin servidor, en modo local. Usa el mismo archivo y navegador para conservar sus datos; conserva respaldos.
 - El workflow `Publish web` despliega en GitHub Pages al subir a `main`. Si GitHub impide habilitar Pages automáticamente, entra en **Settings → Pages → Build and deployment → Source → GitHub Actions**. Luego, en **Actions → Publish web → Run workflow**, ejecútalo sobre `main`. La dirección prevista es `https://gabrielcuba23.github.io/APP_Gastos/`; solo estará disponible después de un despliegue exitoso.
 
