@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { cloud } from "./cloud";
+import { cloud, confirmationRedirectUrl } from "./cloud";
 export default function Account({ user, onClose }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [needsConfirmation, setNeedsConfirmation] = useState(false);
   async function auth(e, signup = false) {
     e.preventDefault();
     if (!e.currentTarget.form?.reportValidity() && e.type !== "submit") return;
@@ -13,13 +14,44 @@ export default function Account({ user, onClose }) {
     try {
       const { error } = await cloud.auth[
         signup ? "signUp" : "signInWithPassword"
-      ]({ email, password });
+      ]({
+        email,
+        password,
+        ...(signup
+          ? { options: { emailRedirectTo: confirmationRedirectUrl } }
+          : {}),
+      });
       if (error) throw error;
-      if (signup)
+      if (signup) {
+        setNeedsConfirmation(true);
         setMessage(
           "Cuenta creada. Revisa tu correo para confirmar el registro antes de ingresar.",
         );
-      else onClose();
+      } else onClose();
+    } catch (err) {
+      if (err.code === "email_not_confirmed") {
+        setNeedsConfirmation(true);
+        setMessage(
+          "Confirma tu correo antes de ingresar. Puedes solicitar un nuevo enlace abajo.",
+        );
+      } else setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function resendConfirmation() {
+    if (!email.trim()) return;
+    setBusy(true);
+    try {
+      const { error } = await cloud.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: { emailRedirectTo: confirmationRedirectUrl },
+      });
+      if (error) throw error;
+      setMessage(
+        "Solicitamos otro correo de confirmación. Usa el enlace más reciente; si tu cuenta ya estaba confirmada, vuelve a ingresar.",
+      );
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -106,6 +138,16 @@ export default function Account({ user, onClose }) {
               </button>
             </div>
           </form>
+        )}
+        {needsConfirmation && !user && (
+          <button
+            type="button"
+            className="account-button"
+            disabled={busy}
+            onClick={resendConfirmation}
+          >
+            Reenviar confirmación
+          </button>
         )}
         {message && (
           <p role="status" className="explanation">

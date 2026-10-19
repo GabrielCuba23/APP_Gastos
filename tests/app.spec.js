@@ -92,3 +92,50 @@ test("account form uses the configured project and public API key", async ({
   );
   expect(observed).toBe(true);
 });
+
+test("signup and resend use the app path in confirmation redirects", async ({
+  page,
+}) => {
+  const { readFile } = await import("node:fs/promises");
+  const config = JSON.parse(await readFile("src/cloud-config.json", "utf8"));
+  let signups = 0,
+    resends = 0;
+  await page.route(config.url + "/auth/v1/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/signup")) {
+      expect(url.searchParams.get("redirect_to")).toBe(config.webUrl);
+      signups++;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          user: { id: "test-user", email: "redirect@example.com" },
+          session: null,
+        }),
+      });
+    } else if (url.pathname.endsWith("/resend")) {
+      expect(url.searchParams.get("redirect_to")).toBe(config.webUrl);
+      expect(route.request().postDataJSON().type).toBe("signup");
+      resends++;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "{}",
+      });
+    } else await route.abort();
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Ingresar / Crear cuenta" }).click();
+  await page.getByLabel("Correo electrónico").fill("redirect@example.com");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("Test-only-password");
+  await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Cuenta creada");
+  await page.getByRole("button", { name: "Reenviar confirmación" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Solicitamos otro correo",
+  );
+  expect(signups).toBe(1);
+  expect(resends).toBe(1);
+});

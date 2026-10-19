@@ -5,6 +5,8 @@ const url = import.meta.env.VITE_SUPABASE_URL?.trim() || publicCloud.url;
 const key =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
   publicCloud.publishableKey;
+export const confirmationRedirectUrl =
+  import.meta.env.VITE_PUBLIC_WEB_URL?.trim() || publicCloud.webUrl;
 export const cloud = url && key ? createClient(url, key) : null;
 export async function readCloud() {
   const { data, error } = await cloud
