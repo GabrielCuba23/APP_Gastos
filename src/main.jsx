@@ -70,8 +70,8 @@ function App() {
   const viewState = useRef({ form, busy });
   viewState.current = { form, busy };
   async function refreshCloud() {
+    const expected = activeUser.current;
     try {
-      const expected = activeUser.current;
       const row = await readCloud();
       if (activeUser.current !== expected || row.revision < revision.current)
         return;
@@ -81,6 +81,7 @@ function App() {
       setCloudReady(true);
       setError("");
     } catch (err) {
+      if (activeUser.current !== expected) return;
       setCloudReady(false);
       setError("No se pudo cargar la cuenta: " + err.message);
     }
@@ -195,6 +196,12 @@ function App() {
   }
   async function submit(e) {
     e.preventDefault();
+    if (form.id && !data.entries.some((entry) => entry.id === form.id)) {
+      setError(
+        "Este movimiento fue eliminado en otro dispositivo. Cierra el formulario y registra uno nuevo si corresponde.",
+      );
+      return;
+    }
     const cents = Math.round(Number(form.amount) * 100);
     const entry = {
       id: form.id || crypto.randomUUID(),
